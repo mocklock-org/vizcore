@@ -1,0 +1,3 @@
+export const DEFAULT_MAX_METRICS = 1000;
+export const DEFAULT_PERFORMANCE_MONITORING_ENABLED = true;
+export const DEFAULT_SAMPLE_RATE = 1.0;

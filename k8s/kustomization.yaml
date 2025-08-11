@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: vizcore
+
+resources:
+- namespace.yaml
+- deployment.yaml
+- service.yaml
+- configmap.yaml
+- ingress.yaml
+
+commonLabels:
+  app: vizcore
+  version: v0.1.0
+
+images:
+- name: vizcore
+  newTag: latest
+
+configMapGenerator:
+- name: vizcore-env-config
+  literals:
+  - NODE_ENV=production
+  - LOG_LEVEL=info

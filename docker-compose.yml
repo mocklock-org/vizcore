@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  vizcore:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vizcore-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    volumes:
+      - ./packages:/app/packages
+      - ./tsconfig.json:/app/tsconfig.json
+      - /app/node_modules
+      - /app/packages/core/node_modules
+    networks:
+      - vizcore-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: vizcore-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - vizcore-network
+  #   restart: unless-stopped
+
+  # PostgreSQL database (optional - uncomment if needed)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: vizcore-postgres
+  #   environment:
+  #     POSTGRES_DB: vizcore
+  #     POSTGRES_USER: vizcore
+  #     POSTGRES_PASSWORD: vizcore_password
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - vizcore-network
+  #   restart: unless-stopped
+
+networks:
+  vizcore-network:
+    driver: bridge
+
+# volumes:
+#   redis_data:
+#   postgres_data:

@@ -1,0 +1,24 @@
+{
+  "name": "vizcore",
+  "version": "0.1.0",
+  "description": "A high-performance data visualization framework for enterprise data challenges",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "lerna run build",
+    "test": "lerna run test",
+    "dev": "lerna run dev --parallel",
+    "clean": "lerna clean",
+    "bootstrap": "lerna bootstrap"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "lerna": "^7.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

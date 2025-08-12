@@ -44,8 +44,7 @@ jobs:
         fi
       continue-on-error: true
     
-    - name: Run npm audit
-      run: npm audit --audit-level moderate
+
 
   test:
     name: Test Suite

@@ -198,9 +198,9 @@ jobs:
         # Test 1: Health check endpoint
         echo "Testing health endpoint..."
         if curl -f http://localhost:3000/health; then
-          echo "✅ Health endpoint working"
+          echo "Health endpoint working"
         else
-          echo "❌ Health endpoint failed"
+          echo "Health endpoint failed"
           kubectl logs -l app=vizcore -n vizcore --tail=50
           exit 1
         fi
@@ -208,9 +208,9 @@ jobs:
         # Test 2: Ready endpoint  
         echo "Testing ready endpoint..."
         if curl -f http://localhost:3000/ready; then
-          echo "✅ Ready endpoint working"
+          echo "Ready endpoint working"
         else
-          echo "❌ Ready endpoint failed"
+          echo "Ready endpoint failed"
           kubectl logs -l app=vizcore -n vizcore --tail=50
           exit 1
         fi
@@ -218,9 +218,9 @@ jobs:
         # Test 3: Basic functionality test
         echo "Testing basic API endpoints..."
         if curl -f http://localhost:3000/; then
-          echo "✅ Root endpoint working"
+          echo "Root endpoint working"
         else
-          echo "❌ Root endpoint failed"
+          echo "Root endpoint failed"
           kubectl logs -l app=vizcore -n vizcore --tail=50
           exit 1
         fi
@@ -228,7 +228,7 @@ jobs:
         # Cleanup
         kill $PF_PID || true
         
-        echo "🎉 All integration tests passed!"
+        echo "All integration tests passed!"
     
     - name: Collect logs on failure
       if: failure()
@@ -242,52 +242,52 @@ jobs:
         echo "=== Events ==="
         kubectl get events -n vizcore --sort-by='.lastTimestamp'
 
-  deploy-staging:
-    name: Deploy to Staging
-    needs: [docker, integration-test]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: staging
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Configure kubectl for staging
-      run: |
-        # This would typically connect to your staging K8s cluster
-        # For now, we'll show the structure
-        echo "Would deploy to staging cluster here"
-        echo "Image to deploy: ${{ needs.docker.outputs.image-tags }}"
-        
-        # Example commands (uncomment when you have a staging cluster):
-        # echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > kubeconfig
-        # export KUBECONFIG=kubeconfig
-        # 
-        # IMAGE_TAG=$(echo '${{ needs.docker.outputs.image-tags }}' | head -n1)
-        # sed -i "s|vizcore:latest|$IMAGE_TAG|g" k8s/deployment.yaml
-        # kubectl apply -k k8s/
-        # kubectl wait --for=condition=available --timeout=300s deployment/vizcore-app -n vizcore
+  # deploy-staging:
+  #   name: Deploy to Staging
+  #   needs: [docker, integration-test]
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  #   environment: staging
+  #   
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #   
+  #   - name: Configure kubectl for staging
+  #     run: |
+  #       # This would typically connect to your staging K8s cluster
+  #       # For now, we'll show the structure
+  #       echo "Would deploy to staging cluster here"
+  #       echo "Image to deploy: ${{ needs.docker.outputs.image-tags }}"
+  #       
+  #       # Example commands (uncomment when you have a staging cluster):
+  #       # echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > kubeconfig
+  #       # export KUBECONFIG=kubeconfig
+  #       # 
+  #       # IMAGE_TAG=$(echo '${{ needs.docker.outputs.image-tags }}' | head -n1)
+  #       # sed -i "s|vizcore:latest|$IMAGE_TAG|g" k8s/deployment.yaml
+  #       # kubectl apply -k k8s/
+  #       # kubectl wait --for=condition=available --timeout=300s deployment/vizcore-app -n vizcore
 
-  deploy-production:
-    name: Deploy to Production
-    needs: [docker, integration-test, deploy-staging]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: production
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Configure kubectl for production
-      run: |
-        echo "Would deploy to production cluster here"
-        echo "Image to deploy: ${{ needs.docker.outputs.image-tags }}"
-        
-        # Example commands (uncomment when you have a production cluster):
-        # echo "${{ secrets.KUBE_CONFIG_PROD }}" | base64 -d > kubeconfig
-        # export KUBECONFIG=kubeconfig
-        # 
-        # IMAGE_TAG=$(echo '${{ needs.docker.outputs.image-tags }}' | head -n1)
-        # sed -i "s|vizcore:latest|$IMAGE_TAG|g" k8s/deployment.yaml
-        # kubectl apply -k k8s/
-        # kubectl wait --for=condition=available --timeout=300s deployment/vizcore-app -n vizcore
+  # deploy-production:
+  #   name: Deploy to Production
+  #   needs: [docker, integration-test, deploy-staging]
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  #   environment: production
+  #   
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #   
+  #   - name: Configure kubectl for production
+  #     run: |
+  #       echo "Would deploy to production cluster here"
+  #       echo "Image to deploy: ${{ needs.docker.outputs.image-tags }}"
+  #       
+  #       # Example commands (uncomment when you have a production cluster):
+  #       # echo "${{ secrets.KUBE_CONFIG_PROD }}" | base64 -d > kubeconfig
+  #       # export KUBECONFIG=kubeconfig
+  #       # 
+  #       # IMAGE_TAG=$(echo '${{ needs.docker.outputs.image-tags }}' | head -n1)
+  #       # sed -i "s|vizcore:latest|$IMAGE_TAG|g" k8s/deployment.yaml
+  #       # kubectl apply -k k8s/
+  #       # kubectl wait --for=condition=available --timeout=300s deployment/vizcore-app -n vizcore

@@ -9,6 +9,7 @@
   "scripts": {
     "build": "lerna run build",
     "test": "lerna run test",
+    "test:coverage": "CI=true lerna run test",
     "test:integration": "cd tests/integration && npm install && npm test",
     "test:k8s": "bash scripts/test-k8s-integration.sh",
     "test:local": "bash scripts/test-local.sh",

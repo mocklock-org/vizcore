@@ -6,8 +6,49 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  NODE_ENV: test
+
 jobs:
+  lint-and-security:
+    name: Lint and Security
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 18.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run ESLint (if configured)
+      run: |
+        if [ -f .eslintrc.js ] || [ -f .eslintrc.json ] || [ -f .eslintrc.yml ]; then
+          npm run lint
+        else
+          echo "ESLint not configured, skipping..."
+        fi
+      continue-on-error: true
+    
+    - name: Run Prettier check (if configured)
+      run: |
+        if [ -f .prettierrc ] || [ -f .prettierrc.json ] || [ -f .prettierrc.js ]; then
+          npm run format:check
+        else
+          echo "Prettier not configured, skipping..."
+        fi
+      continue-on-error: true
+    
+    - name: Run npm audit
+      run: npm audit --audit-level moderate
+
   test:
+    name: Test Suite
     runs-on: ubuntu-latest
     
     strategy:
@@ -26,16 +67,39 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
-    - name: Run tests
-      run: npm test
+    - name: Run tests with coverage
+      run: npm test -- --coverage --watchAll=false
     
-    - name: Build
+    - name: Upload coverage to Codecov
+      if: matrix.node-version == '18.x'
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+    
+    - name: Build project
       run: npm run build
+    
+    - name: Test build artifacts
+      run: |
+        if [ -d "packages/core/dist" ]; then
+          echo "Build artifacts found in packages/core/dist"
+          ls -la packages/core/dist/
+        else
+          echo "ERROR: Build artifacts not found!"
+          exit 1
+        fi
 
   docker:
-    needs: test
+    name: Build and Push Docker Image
+    needs: [test, lint-and-security]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tags: ${{ steps.meta.outputs.tags }}
     
     steps:
     - uses: actions/checkout@v4
@@ -62,6 +126,7 @@ jobs:
           type=raw,value=latest,enable={{is_default_branch}}
     
     - name: Build and push
+      id: build
       uses: docker/build-push-action@v5
       with:
         context: .
@@ -70,3 +135,171 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+
+  integration-test:
+    name: Integration Tests (Kubernetes)
+    needs: docker
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Create kind cluster
+      uses: helm/kind-action@v1.8.0
+      with:
+        cluster_name: vizcore-test
+        config: |
+          kind: Cluster
+          apiVersion: kind.x-k8s.io/v1alpha4
+          nodes:
+          - role: control-plane
+            kubeadmConfigPatches:
+            - |
+              kind: InitConfiguration
+              nodeRegistration:
+                kubeletExtraArgs:
+                  node-labels: "ingress-ready=true"
+            extraPortMappings:
+            - containerPort: 80
+              hostPort: 80
+              protocol: TCP
+            - containerPort: 443
+              hostPort: 443
+              protocol: TCP
+    
+    - name: Load Docker image into kind
+      run: |
+        # Get the first tag from the docker job output
+        IMAGE_TAG=$(echo '${{ needs.docker.outputs.image-tags }}' | head -n1)
+        echo "Loading image: $IMAGE_TAG"
+        
+        # Pull the image and load it into kind
+        docker pull $IMAGE_TAG
+        kind load docker-image $IMAGE_TAG --name vizcore-test
+    
+    - name: Update Kubernetes manifests with new image
+      run: |
+        IMAGE_TAG=$(echo '${{ needs.docker.outputs.image-tags }}' | head -n1)
+        echo "Using image: $IMAGE_TAG"
+        
+        # Update the deployment to use the new image
+        sed -i "s|vizcore:latest|$IMAGE_TAG|g" k8s/deployment.yaml
+    
+    - name: Deploy to kind cluster
+      run: |
+        kubectl apply -k k8s/
+        
+        # Wait for deployment to be ready
+        kubectl wait --for=condition=available --timeout=300s deployment/vizcore-app -n vizcore
+        
+        # Check if pods are running
+        kubectl get pods -n vizcore
+    
+    - name: Run integration tests
+      run: |
+        # Port forward to access the service
+        kubectl port-forward service/vizcore-service 3000:80 -n vizcore &
+        PF_PID=$!
+        
+        # Wait for port forwarding to be ready
+        sleep 10
+        
+        echo "Running integration tests..."
+        
+        # Test 1: Health check endpoint
+        echo "Testing health endpoint..."
+        if curl -f http://localhost:3000/health; then
+          echo "✅ Health endpoint working"
+        else
+          echo "❌ Health endpoint failed"
+          kubectl logs -l app=vizcore -n vizcore --tail=50
+          exit 1
+        fi
+        
+        # Test 2: Ready endpoint  
+        echo "Testing ready endpoint..."
+        if curl -f http://localhost:3000/ready; then
+          echo "✅ Ready endpoint working"
+        else
+          echo "❌ Ready endpoint failed"
+          kubectl logs -l app=vizcore -n vizcore --tail=50
+          exit 1
+        fi
+        
+        # Test 3: Basic functionality test
+        echo "Testing basic API endpoints..."
+        if curl -f http://localhost:3000/; then
+          echo "✅ Root endpoint working"
+        else
+          echo "❌ Root endpoint failed"
+          kubectl logs -l app=vizcore -n vizcore --tail=50
+          exit 1
+        fi
+        
+        # Cleanup
+        kill $PF_PID || true
+        
+        echo "🎉 All integration tests passed!"
+    
+    - name: Collect logs on failure
+      if: failure()
+      run: |
+        echo "=== Deployment Status ==="
+        kubectl get all -n vizcore
+        
+        echo "=== Pod Logs ==="
+        kubectl logs -l app=vizcore -n vizcore --tail=100
+        
+        echo "=== Events ==="
+        kubectl get events -n vizcore --sort-by='.lastTimestamp'
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: [docker, integration-test]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: staging
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Configure kubectl for staging
+      run: |
+        # This would typically connect to your staging K8s cluster
+        # For now, we'll show the structure
+        echo "Would deploy to staging cluster here"
+        echo "Image to deploy: ${{ needs.docker.outputs.image-tags }}"
+        
+        # Example commands (uncomment when you have a staging cluster):
+        # echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > kubeconfig
+        # export KUBECONFIG=kubeconfig
+        # 
+        # IMAGE_TAG=$(echo '${{ needs.docker.outputs.image-tags }}' | head -n1)
+        # sed -i "s|vizcore:latest|$IMAGE_TAG|g" k8s/deployment.yaml
+        # kubectl apply -k k8s/
+        # kubectl wait --for=condition=available --timeout=300s deployment/vizcore-app -n vizcore
+
+  deploy-production:
+    name: Deploy to Production
+    needs: [docker, integration-test, deploy-staging]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Configure kubectl for production
+      run: |
+        echo "Would deploy to production cluster here"
+        echo "Image to deploy: ${{ needs.docker.outputs.image-tags }}"
+        
+        # Example commands (uncomment when you have a production cluster):
+        # echo "${{ secrets.KUBE_CONFIG_PROD }}" | base64 -d > kubeconfig
+        # export KUBECONFIG=kubeconfig
+        # 
+        # IMAGE_TAG=$(echo '${{ needs.docker.outputs.image-tags }}' | head -n1)
+        # sed -i "s|vizcore:latest|$IMAGE_TAG|g" k8s/deployment.yaml
+        # kubectl apply -k k8s/
+        # kubectl wait --for=condition=available --timeout=300s deployment/vizcore-app -n vizcore

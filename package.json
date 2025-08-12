@@ -9,6 +9,11 @@
   "scripts": {
     "build": "lerna run build",
     "test": "lerna run test",
+    "test:integration": "cd tests/integration && npm install && npm test",
+    "test:k8s": "bash scripts/test-k8s-integration.sh",
+    "test:local": "bash scripts/test-local.sh",
+    "start": "cd packages/core && npm start",
+    "start:dev": "cd packages/core && npm run start:dev",
     "dev": "lerna run dev --parallel",
     "clean": "lerna clean",
     "bootstrap": "lerna bootstrap"

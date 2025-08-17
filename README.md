@@ -10,6 +10,18 @@ Our focus is on helping companies get full insights on their data, whether worki
 
 This is the initial development stage. Stay tuned as we will launch the official first beta soon.
 
+## Architecture
+
+VizCore is built as a monorepo with two main packages:
+
+### `@vizcore/core`
+The foundation of VizCore that provides high-performance data processing capabilities. It includes a plugin system for extensible data processors, built-in performance monitoring and memory management, and a flexible configuration system for enterprise environments.
+
+### `@vizcore/react`
+A React integration layer that makes VizCore easily accessible in React applications. The package provides React components and hooks that wrap the core functionality, enabling developers to build data visualization dashboards with file upload capabilities, real-time system monitoring, and progress tracking. It includes full TypeScript support and follows React best practices for state management and lifecycle handling.
+
+The React package bridges the gap between VizCore's powerful data processing engine and React's component-based architecture, making it simple to integrate enterprise-grade data visualization into modern web applications.
+
 ## Development Commands
 
 ```bash

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import * as React from 'react';
 import { useVizCore } from './useVizCore';
 import { UseSystemMetricsOptions, SystemMetricsState, SystemMetricsHook } from '../types';
 
@@ -11,7 +11,7 @@ export const useSystemMetrics = (
     enableAutoRefresh = false
   } = options;
 
-  const [state, setState] = useState<SystemMetricsState>({
+  const [state, setState] = React.useState<SystemMetricsState>({
     memory: null,
     performance: [],
     isLoading: false,
@@ -19,9 +19,9 @@ export const useSystemMetrics = (
     lastUpdated: null
   });
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = React.useCallback(async () => {
     if (!isReady) return;
 
     setState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -47,7 +47,7 @@ export const useSystemMetrics = (
     }
   }, [getMemoryStats, getPerformanceMetrics, isReady]);
 
-  const startAutoRefresh = useCallback(() => {
+  const startAutoRefresh = React.useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
@@ -55,20 +55,20 @@ export const useSystemMetrics = (
     intervalRef.current = setInterval(refresh, refreshInterval);
   }, [refresh, refreshInterval]);
 
-  const stopAutoRefresh = useCallback(() => {
+  const stopAutoRefresh = React.useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (isReady) {
       refresh();
     }
   }, [isReady, refresh]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (enableAutoRefresh && isReady) {
       startAutoRefresh();
     } else {
@@ -78,7 +78,7 @@ export const useSystemMetrics = (
     return stopAutoRefresh;
   }, [enableAutoRefresh, isReady, startAutoRefresh, stopAutoRefresh]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     return () => {
       stopAutoRefresh();
     };

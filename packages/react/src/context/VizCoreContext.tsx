@@ -1,19 +1,19 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import * as React from 'react';
 import { VizCore } from '@vizcore/core';
 import { VizCoreContextValue, VizCoreProviderProps } from '../types';
 
-const VizCoreContext = createContext<VizCoreContextValue | undefined>(undefined);
+const VizCoreContext = React.createContext<VizCoreContextValue | undefined>(undefined);
 
 export const VizCoreProvider: React.FC<VizCoreProviderProps> = ({ 
   children, 
   config = {},
   core: providedCore 
 }) => {
-  const [core, setCore] = useState<VizCore | null>(null);
-  const [isReady, setIsReady] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [core, setCore] = React.useState<VizCore | null>(null);
+  const [isReady, setIsReady] = React.useState(false);
+  const [error, setError] = React.useState<Error | null>(null);
 
-  const initializeCore = useCallback(async () => {
+  const initializeCore = React.useCallback(async () => {
     try {
       setError(null);
       setIsReady(false);
@@ -35,7 +35,7 @@ export const VizCoreProvider: React.FC<VizCoreProviderProps> = ({
     }
   }, [config, providedCore]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     initializeCore();
 
     return () => {
@@ -59,7 +59,7 @@ export const VizCoreProvider: React.FC<VizCoreProviderProps> = ({
 };
 
 export const useVizCoreContext = (): VizCoreContextValue => {
-  const context = useContext(VizCoreContext);
+  const context = React.useContext(VizCoreContext);
   
   if (context === undefined) {
     throw new Error('useVizCoreContext must be used within a VizCoreProvider');

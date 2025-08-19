@@ -1,18 +1,18 @@
-import { useState, useCallback } from 'react';
+import * as React from 'react';
 import { useVizCore } from './useVizCore';
 import { UseDataUploadOptions, DataUploadState, DataUploadHook } from '../types';
 
 export const useDataUpload = (): DataUploadHook => {
   const { processData, isReady } = useVizCore();
   
-  const [state, setState] = useState<DataUploadState>({
+  const [state, setState] = React.useState<DataUploadState>({
     isUploading: false,
     progress: 0,
     error: null,
     result: null
   });
 
-  const uploadData = useCallback(async (
+  const uploadData = React.useCallback(async (
     data: File | string | unknown,
     options: UseDataUploadOptions = {}
   ) => {

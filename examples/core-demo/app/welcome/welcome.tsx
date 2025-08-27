@@ -11,10 +11,10 @@ export function Welcome() {
   }, [core]);
 
   return (
-    <main className="flex items-center justify-center pt-16 pb-4">
+    <main className="flex items-center justify-center h-screen">
       <div className="flex-1 flex flex-col items-center gap-16 min-h-0">
         <header className="flex flex-col items-center gap-9">
-          <div className="text-sm text-gray-700 dark:text-gray-300">
+          <div className="text-6xl text-gray-700 dark:text-gray-300">
             VizCore ready • Memory used: {memoryUsed ?? 0} bytes
           </div>
         </header>
